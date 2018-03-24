@@ -1,4 +1,5 @@
 ﻿using AngleSharp.Parser.Html;
+using AngleSharp.Dom;
 using CommandLine;
 using System;
 using System.Collections.Specialized;
@@ -21,31 +22,33 @@ namespace lorem
 
         private static void Ipsum(Options options)
         {
-            NameValueCollection postData = GetPostData(options);
-            string result = GetIpsum(postData, options);
+            string result = GetIpsum(options);
             if (options.Console)
                 Console.WriteLine(result);
             else
                 Clipboard.SetText(result);
         }
 
-        private static string GetIpsum(NameValueCollection postData, Options options)
+        private static string GetIpsum(Options options)
+        {
+            var paragraphs = GetParagraphs(options);
+            var output = new StringBuilder();
+            foreach (var p in paragraphs)
+                output.Append(GetParagraph(p.TextContent, options.NoHtml, options.WrapLength));
+            return output.ToString();
+        }
+
+        private static IHtmlCollection<IElement> GetParagraphs(Options options)
         {
             string result;
             HtmlParser parser = new HtmlParser();
             using (WebClient client = new WebClient())
             {
-                byte[] response = client.UploadValues(lipsumUrl, "POST", postData);
+                byte[] response = client.UploadValues(lipsumUrl, "POST", new IpsumPostData(options));
                 result = Encoding.UTF8.GetString(response);
             }
             var doc = parser.Parse(result);
-            var paragraphs = doc.QuerySelectorAll("div#lipsum p");
-
-            var output = new StringBuilder();
-            foreach (var p in paragraphs)
-                output.Append(GetParagraph(p.TextContent, options.NoHtml, options.WrapLength));
-
-            return output.ToString();
+            return doc.QuerySelectorAll("div#lipsum p");
         }
 
         private static StringBuilder GetParagraph(string paragraphText, bool noHtml, int wrapLength)
@@ -83,30 +86,6 @@ namespace lorem
             }
             --wrapped.Length;
             return wrapped;
-        }
-
-        private static NameValueCollection GetPostData(Options options)
-        {
-            var postData = new NameValueCollection();
-            postData.Add("amount", options.Amount.ToString());
-            postData.Add("what", whatOption(options));
-            postData.Add("start", startOption(options));
-            postData.Add("generate", "Generate Lorem Ipsum");
-            return postData;
-        }
-
-        private static string startOption(Options options)
-        {
-            return options.NoStart ? "no" : "yes";
-        }
-
-        private static string whatOption(Options options)
-        {
-            if (options.Words)
-                return "words";
-            if (options.Bytes)
-                return "bytes";
-            return "paras";
         }
     }
 }
