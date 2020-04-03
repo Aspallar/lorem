@@ -16,6 +16,8 @@ namespace lorem
         [STAThread]
         static void Main(string[] args)
         {
+            ServicePointManager.Expect100Continue = true;
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             Parser.Default.ParseArguments<Options>(args)
                 .WithParsed(options => Ipsum(options));
         }
